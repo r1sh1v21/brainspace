@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>rishi's brain</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#020206;--text:#e0e0ea;--text-dim:#7a7a90;--text-muted:#4a4a5e;
+  --sys:#ff9100;--ml:#b388ff;--proj:#69f0ae;--research:#ffd740;--contact:#ff80ab;
+  --lang:#00e5ff;--tool:#78909c;--edu:#4fc3f7;--hobby:#ff8a65;--concept:#80cbc4;--mlc:#ce93d8;
+  --panel-bg:rgba(8,8,14,0.94);--border:#1a1a2a;
+  --mono:'JetBrains Mono',monospace;--sans:'Sora',sans-serif;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--sans)}
+#bhContainer{position:fixed;inset:0;z-index:0;overflow:hidden;background:#020206}
+#bhVideo{position:absolute;top:50%;left:50%;min-width:100%;min-height:100%;transform:translate(-50%,-50%);object-fit:cover;opacity:.45;filter:blur(1.5px) saturate(1.2)}
+#bhOverlay{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at center,rgba(2,2,6,.3) 0%,rgba(2,2,6,.7) 70%,rgba(2,2,6,.9) 100%);pointer-events:none}
+#graphCanvas{position:fixed;inset:0;z-index:1}
+#intro{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 1.2s;cursor:pointer}
+#intro.gone{opacity:0;pointer-events:none}
+.intro-pre{font-family:var(--mono);color:var(--ml);font-size:.75rem;opacity:0;animation:fu .5s ease forwards .1s;letter-spacing:1px}
+.intro-name{font-family:var(--sans);font-size:clamp(2.2rem,5vw,3.8rem);font-weight:700;letter-spacing:-2px;margin:.6rem 0;opacity:0;animation:fu .5s ease forwards .35s}
+.intro-name .ac{background:linear-gradient(135deg,var(--sys),var(--ml),var(--proj));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.intro-sub{font-family:var(--mono);color:var(--text-muted);font-size:.72rem;opacity:0;animation:fu .5s ease forwards .6s;max-width:420px;text-align:center;line-height:1.6}
+.intro-enter{position:absolute;bottom:50px;font-family:var(--mono);font-size:.68rem;color:var(--text-muted);animation:pulse2 2s ease-in-out infinite}
+@keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse2{0%,100%{opacity:.25}50%{opacity:.7}}
+
+#tooltip{position:fixed;z-index:500;background:var(--panel-bg);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-family:var(--mono);font-size:.72rem;pointer-events:none;opacity:0;transition:opacity .15s;max-width:260px}
+#tooltip.show{opacity:1}
+.tt-title{color:var(--text);font-weight:600;font-size:.78rem}
+.tt-sub{color:var(--text-muted);font-size:.66rem}
+
+#panel{position:fixed;top:0;right:0;width:440px;max-width:92vw;height:100vh;background:var(--panel-bg);backdrop-filter:blur(30px);border-left:1px solid var(--border);z-index:900;transform:translateX(100%);transition:transform .4s cubic-bezier(.16,1,.3,1);display:flex;flex-direction:column;overflow:hidden}
+#panel.open{transform:translateX(0)}
+.ph{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.pt{font-size:1.05rem;font-weight:600;letter-spacing:-.5px}
+.pc{width:30px;height:30px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text-dim);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:var(--mono);transition:all .2s}
+.pc:hover{border-color:#ff5252;color:#ff5252}
+.pb{padding:24px;overflow-y:auto;flex:1}
+.pb::-webkit-scrollbar{width:4px}
+.pb::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.pl{font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;margin-top:18px}
+.pl:first-child{margin-top:0}
+.px{color:var(--text-dim);font-size:.86rem;line-height:1.8}
+.px p{margin-bottom:10px}
+.ptags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.ptag{font-family:var(--mono);font-size:.66rem;color:var(--text-muted);border:1px solid var(--border);padding:3px 9px;border-radius:4px}
+.plink{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.76rem;text-decoration:none;padding:8px 14px;border:1px solid var(--border);border-radius:6px;margin-top:10px;margin-right:8px;transition:all .2s}
+.plink:hover{background:rgba(255,255,255,.05)}
+.pst{display:inline-block;font-family:var(--mono);font-size:1.3rem;font-weight:700;margin-right:14px}
+
+#mapBtn{position:fixed;bottom:20px;right:20px;z-index:100;font-family:var(--mono);font-size:.7rem;color:var(--text-dim);background:var(--panel-bg);backdrop-filter:blur(16px);border:1px solid var(--border);padding:8px 16px;border-radius:6px;cursor:pointer;transition:all .2s}
+#mapBtn:hover{border-color:var(--ml);color:var(--ml)}
+#legend{position:fixed;bottom:20px;left:16px;z-index:100;font-family:var(--mono);font-size:.58rem;display:flex;gap:10px;opacity:.45;flex-wrap:wrap}
+.li{display:flex;align-items:center;gap:4px;color:var(--text-muted)}.ld{width:7px;height:7px;border-radius:50%}
+#controls{position:fixed;top:16px;left:16px;z-index:100;font-family:var(--mono);font-size:.6rem;color:var(--text-muted);opacity:.3;line-height:1.9}
+#stamp{position:fixed;top:16px;right:16px;z-index:100;font-family:var(--mono);font-size:.58rem;color:var(--text-muted);opacity:.25}
+@media(max-width:600px){#panel{width:100vw}#legend,#controls,#stamp{display:none}}
+</style>
+</head>
+<body>
+
+<div id="bhContainer">
+  <video id="bhVideo" autoplay muted loop playsinline>
+    <source src="blackhole.mp4" type="video/mp4">
+  </video>
+</div>
+<div id="bhOverlay"></div>
+<canvas id="graphCanvas"></canvas>
+
+<div id="intro">
+  <div class="intro-pre">// mapping neural pathways</div>
+  <div class="intro-name">rishi's <span class="ac">brain</span></div>
+  <div class="intro-sub">an interactive map of everything i know, everything i've built, and how it all connects</div>
+  <div class="intro-enter">[ click anywhere to explore ]</div>
+</div>
+
+<div id="tooltip"><div class="tt-title"></div><div class="tt-sub"></div></div>
+<div id="panel"><div class="ph"><div class="pt" id="pTitle"></div><button class="pc" onclick="closePanel()">×</button></div><div class="pb" id="pBody"></div></div>
+<button id="mapBtn" onclick="zoomFit()">⊡ map view</button>
+<div id="legend">
+  <div class="li"><div class="ld" style="background:var(--lang)"></div>lang</div>
+  <div class="li"><div class="ld" style="background:var(--sys)"></div>systems</div>
+  <div class="li"><div class="ld" style="background:var(--ml)"></div>ml/ai</div>
+  <div class="li"><div class="ld" style="background:var(--mlc)"></div>ml concepts</div>
+  <div class="li"><div class="ld" style="background:var(--concept)"></div>cs concepts</div>
+  <div class="li"><div class="ld" style="background:var(--proj)"></div>projects</div>
+  <div class="li"><div class="ld" style="background:var(--research)"></div>research</div>
+  <div class="li"><div class="ld" style="background:var(--edu)"></div>education</div>
+  <div class="li"><div class="ld" style="background:var(--hobby)"></div>interests</div>
+  <div class="li"><div class="ld" style="background:var(--contact)"></div>connect</div>
+</div>
+<div id="controls">drag to pan · scroll to zoom · click to explore</div>
+<div id="stamp">last updated: march 2026</div>
+
+<script>
+// ══════════════════════════════════════
+// VIDEO BLACK HOLE
+// ══════════════════════════════════════
+let W=innerWidth,H=innerHeight;
+
+// ══════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════
+const CM={core:'#00e5ff',lang:'#00e5ff',sys:'#ff9100',ml:'#b388ff',project:'#69f0ae',research:'#ffd740',contact:'#ff80ab',tool:'#78909c',edu:'#4fc3f7',hobby:'#ff8a65',concept:'#80cbc4',mlc:'#ce93d8'};
+function hexRgb(h){return{r:parseInt(h.slice(1,3),16),g:parseInt(h.slice(3,5),16),b:parseInt(h.slice(5,7),16)}}
+function P(t,b){return{title:t,body:b}}
+function sec(l,c,x){return`<div class="pl" style="color:${c}">${l}</div>${x}`}
+function tx(t){return`<div class="px"><p>${t}</p></div>`}
+function tgs(a){return`<div class="ptags">${a.map(t=>`<span class="ptag">${t}</span>`).join('')}</div>`}
+function mkL(u,l,c){return`<a href="${u}" target="_blank" class="plink" style="color:${c}">${l}</a>`}
+
+const AC=window.AudioContext||window.webkitAudioContext;let ac;
+function sClick(){if(!ac)return;try{const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.setValueAtTime(800,ac.currentTime);o.frequency.exponentialRampToValueAtTime(400,ac.currentTime+.08);g.gain.setValueAtTime(.05,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.1);o.start();o.stop(ac.currentTime+.1)}catch(e){}}
+function sWhoosh(){if(!ac)return;try{const b=ac.sampleRate*.1,buf=ac.createBuffer(1,b,ac.sampleRate),d=buf.getChannelData(0);for(let i=0;i<b;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/b,3)*.03;const s=ac.createBufferSource();s.buffer=buf;s.connect(ac.destination);s.start()}catch(e){}}
+
+// images
+const IMG_URLS={python:'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg',rust:'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/rust/rust-original.svg',cpp:'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cplusplus/cplusplus-original.svg',java:'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg',js:'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg',flutter:'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/flutter/flutter-original.svg',react:'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg',docker:'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/docker/docker-original.svg',git:'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/git/git-original.svg',linux:'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg',pytorch:'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/pytorch/pytorch-original.svg',tensorflow:'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tensorflow/tensorflow-original.svg',jupyter:'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jupyter/jupyter-original.svg',vscode:'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vscode/vscode-original.svg',opencv:'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/opencv/opencv-original.svg'};
+const loadedImgs={};
+Object.entries(IMG_URLS).forEach(([k,u])=>{const img=new Image();img.crossOrigin='anonymous';img.src=u;img.onload=()=>{loadedImgs[k]=img}});
+
+// ══════════════════════════════════════
+// NODES (same data as v4, abbreviated panels)
+// ══════════════════════════════════════
+const N=[
+  {id:'rishi',label:'Rishi',group:'core',r:34,img:null,tooltip:'the center',os:.0001,
+    panel:P("hey, i'm rishi.",sec('who','var(--lang)',tx("2025 cse grad from sastra, chennai. i build things from scratch. i understand the math behind algorithms, not just the api calls.")+tx("when something interests me, i go all in. picked up entire stacks from scratch out of curiosity."))+sec('stats','var(--proj)',`<div><span class="pst" style="color:var(--lang)">5+</span><span style="color:var(--text-muted);font-size:.8rem">languages</span></div><div><span class="pst" style="color:var(--proj)">12+</span><span style="color:var(--text-muted);font-size:.8rem">projects</span></div><div><span class="pst" style="color:var(--research)">1</span><span style="color:var(--text-muted);font-size:.8rem">paper</span></div>`)+sec('links','var(--contact)',mkL('https://github.com/r1sh1v21','github','var(--proj)')+mkL('https://linkedin.com/in/rishi-valee','linkedin','var(--lang)')+mkL('rishi_resume.pdf','resume.pdf','var(--research)')))},
+  {id:'systems',label:'Systems',group:'sys',r:20,img:null,tooltip:'low-level, fast',os:.0003,panel:P('systems',sec('tools','var(--sys)',tgs(['Rust','Tokio','WebSockets','C++','Concurrency'])))},
+  {id:'ml',label:'ML / AI',group:'ml',r:22,img:null,tooltip:'the math, not the libraries',os:.00025,panel:P('ml / ai',sec('areas','var(--ml)',tgs(['ML','Deep Learning','NLP','CV','Statistical Modeling']))+sec('frameworks','var(--ml)',tgs(['PyTorch','TensorFlow','Scikit-learn','OpenCV'])))},
+  {id:'webdev',label:'Full Stack',group:'lang',r:16,img:'react',tooltip:'react, node',os:.0004,panel:P('full stack',sec('stack','var(--lang)',tgs(['React','Node.js','MongoDB','REST','JS'])))},
+  {id:'python',label:'Python',group:'lang',r:16,img:'python',tooltip:'daily driver',os:.00035},
+  {id:'cpp',label:'C++',group:'lang',r:14,img:'cpp',tooltip:'dsa + systems',os:.0004},
+  {id:'rust',label:'Rust',group:'lang',r:15,img:'rust',tooltip:'fell in love',os:.00038},
+  {id:'java',label:'Java',group:'lang',r:11,img:'java',tooltip:'know it',os:.00045},
+  {id:'js',label:'JavaScript',group:'lang',r:11,img:'js',tooltip:'frontend',os:.00042},
+  {id:'flutter',label:'Flutter',group:'lang',r:11,img:'flutter',tooltip:'emergency app',os:.00048},
+  {id:'cv',label:'Computer Vision',group:'ml',r:14,img:'opencv',tooltip:'yolo, opencv',os:.0004},
+  {id:'nlp',label:'NLP',group:'ml',r:14,img:'tensorflow',tooltip:'text, sentiment',os:.00038},
+  {id:'dl',label:'Deep Learning',group:'ml',r:13,img:'pytorch',tooltip:'neural nets',os:.00042},
+  {id:'nn',label:'Neural Nets',group:'mlc',r:10,img:null,tooltip:'architectures',os:.0005},
+  {id:'cnn',label:'CNNs',group:'mlc',r:10,img:null,tooltip:'convolutions',os:.00052},
+  {id:'rnn',label:'RNNs/LSTMs',group:'mlc',r:10,img:null,tooltip:'sequences',os:.00048},
+  {id:'transformers',label:'Transformers',group:'mlc',r:10,img:null,tooltip:'attention',os:.00046},
+  {id:'backprop',label:'Backprop',group:'mlc',r:9,img:null,tooltip:'gradients',os:.00055},
+  {id:'gradDesc',label:'Grad Descent',group:'mlc',r:9,img:null,tooltip:'sgd, adam',os:.00053},
+  {id:'lossFn',label:'Loss Fn',group:'mlc',r:8,img:null,tooltip:'cross-entropy',os:.00058},
+  {id:'featEng',label:'Feature Eng',group:'mlc',r:9,img:null,tooltip:'selection',os:.0005},
+  {id:'ensemble',label:'Ensemble',group:'mlc',r:9,img:null,tooltip:'RF, boosting',os:.00051},
+  {id:'rl',label:'RL',group:'mlc',r:9,img:null,tooltip:'rewards',os:.00047},
+  {id:'os',label:'OS',group:'concept',r:10,img:null,tooltip:'processes, threads',os:.00052},
+  {id:'dbms',label:'DBMS',group:'concept',r:10,img:null,tooltip:'sql',os:.00054},
+  {id:'cn',label:'Networks',group:'concept',r:10,img:null,tooltip:'tcp/ip',os:.0005},
+  {id:'discreteMath',label:'Discrete Math',group:'concept',r:9,img:null,tooltip:'logic',os:.00056},
+  {id:'linAlg',label:'Linear Algebra',group:'concept',r:9,img:null,tooltip:'matrices',os:.00053},
+  {id:'probability',label:'Probability',group:'concept',r:9,img:null,tooltip:'bayes',os:.00055},
+  {id:'docker',label:'Docker',group:'tool',r:10,img:'docker',tooltip:'containers',os:.0005},
+  {id:'postman',label:'Postman',group:'tool',r:9,img:null,tooltip:'api testing',os:.00055},
+  {id:'jupyter',label:'Jupyter',group:'tool',r:9,img:'jupyter',tooltip:'notebooks',os:.00053},
+  {id:'vscode',label:'VS Code',group:'tool',r:9,img:'vscode',tooltip:'editor',os:.00052},
+  {id:'git',label:'Git',group:'tool',r:10,img:'git',tooltip:'version control',os:.00048},
+  {id:'linux',label:'Linux',group:'tool',r:10,img:'linux',tooltip:'daily os',os:.00046},
+  {id:'dsa',label:'DSA',group:'tool',r:11,img:null,tooltip:'competitive prog',os:.00044},
+  {id:'sastra',label:'SASTRA',group:'edu',r:14,img:null,tooltip:'cse 2021-25',os:.0003,panel:P('education',sec('degree','var(--edu)',tx("B.E. CSE, SASTRA University, 2021-2025")))},
+  {id:'gate',label:'GATE',group:'edu',r:11,img:null,tooltip:'cleared',os:.00035,panel:P('gate',sec('what','var(--edu)',tx("cleared gate. deep foundations in cs, ml theory, math, dsa.")))},
+  {id:'trading',label:'Trading System',group:'project',r:18,img:null,tooltip:'11 rust modules',os:.00028,panel:P('trading system',sec('what','var(--proj)',tx("11 rust modules. real-time websocket ingestion, concurrent tx processing, multi-phase filtering. sub-second latency."))+sec('tech','var(--proj)',tgs(['Rust','Tokio','WebSocket','Concurrency'])))},
+  {id:'ridesafe',label:'RideSafe',group:'project',r:15,img:null,tooltip:'yolov8',os:.00032,panel:P('ridesafe',sec('what','var(--proj)',tx("real-time helmet + triple-riding detection. yolov8, ocr plate recognition."))+sec('tech','var(--proj)',tgs(['Python','YOLOv8','OpenCV','OCR'])))},
+  {id:'mental',label:'Mental Health AI',group:'project',r:14,img:null,tooltip:'nlp',os:.00034,panel:P('mental health',sec('what','var(--proj)',tx("nlp pipeline for mental health indicators. svm, rf, lstm classifiers."))+sec('tech','var(--proj)',tgs(['Python','LSTM','NLP','TF-IDF'])))},
+  {id:'algobot',label:'Algo Bot',group:'project',r:13,img:null,tooltip:'backtesting',os:.00036,panel:P('algo bot',sec('what','var(--proj)',tx("backtesting engine. rsi, macd, bollinger bands."))+sec('tech','var(--proj)',tgs(['Python','Pandas'])))},
+  {id:'nether',label:'Nether',group:'project',r:12,img:null,tooltip:'blog',os:.0004,panel:P('nether',sec('what','var(--proj)',tx("full-stack blog. markdown, mongodb."))+mkL('https://nether-v64p.onrender.com','visit','var(--proj)'))},
+  {id:'chat',label:'Encrypted Chat',group:'project',r:14,img:null,tooltip:'p2p',os:.00033,panel:P('encrypted chat',sec('what','var(--proj)',tx("decentralized p2p encrypted messaging."))+mkL('https://github.com/r1sh1v21/decentralized-encrypted-chat','github','var(--proj)'))},
+  {id:'emergency',label:'Emergency SOS',group:'project',r:13,img:null,tooltip:'flutter',os:.00037,panel:P('emergency sos',sec('what','var(--proj)',tx("flutter app. one-tap sos, geolocation ambulance dispatch."))+mkL('https://github.com/r1sh1v21/emergency-app','github','var(--proj)'))},
+  {id:'diabetes',label:'Diabetes Pred',group:'project',r:13,img:null,tooltip:'ml',os:.00039,panel:P('diabetes',sec('what','var(--proj)',tx("ml for gestational diabetes prediction."))+mkL('https://github.com/r1sh1v21/Gestational-Diabeties-Prediction','github','var(--proj)'))},
+  {id:'signlang',label:'Sign Language',group:'project',r:13,img:null,tooltip:'cv',os:.00035,panel:P('sign language',sec('what','var(--proj)',tx("gesture detection with ml and cv."))+mkL('https://github.com/r1sh1v21/sign-language-detection','github','var(--proj)'))},
+  {id:'spotify',label:'Spotify→MP3',group:'project',r:10,img:null,tooltip:'python',os:.00045,panel:P('spotify',mkL('https://github.com/r1sh1v21/spotify-to-mp3','github','var(--proj)'))},
+  {id:'chatbots',label:'AI Chatbots',group:'project',r:12,img:null,tooltip:'llm',os:.0004,panel:P('chatbots',sec('tech','var(--proj)',tgs(['Python','LLM APIs','NLP'])))},
+  {id:'parkinsons',label:"Parkinson's",group:'research',r:17,img:null,tooltip:'94.9%',os:.0003,
+    panel:P("parkinson's",sec('paper','var(--research)',tx("<strong>Early Detection of Parkinson's Disease Using ML</strong><br>Dr. A. Sumathi, <strong>Rishikeswaran V</strong><br>Accepted April 2026"))+sec('results','var(--research)',`<div><span class="pst" style="color:var(--research)">94.9%</span><span style="color:var(--text-muted);font-size:.8rem">accuracy</span></div><div><span class="pst" style="color:var(--research)">0.967</span><span style="color:var(--text-muted);font-size:.8rem">AUC</span></div>`))},
+  {id:'chess',label:'Chess',group:'hobby',r:11,img:null,tooltip:'strategic',os:.00042},
+  {id:'space',label:'Space',group:'hobby',r:11,img:null,tooltip:'rockets',os:.0004},
+  {id:'tradingH',label:'Trading',group:'hobby',r:10,img:null,tooltip:'markets',os:.00044},
+  {id:'reading',label:'Reading',group:'hobby',r:11,img:null,tooltip:'goodreads',os:.00041,panel:P('reading',mkL('https://www.goodreads.com/user/show/151797174-rishi','my goodreads','var(--hobby)'))},
+  {id:'music',label:'Music',group:'hobby',r:10,img:null,tooltip:'always on',os:.00046},
+  {id:'boxing',label:'Boxing',group:'hobby',r:10,img:null,tooltip:'sharp',os:.00043},
+  {id:'contact',label:'Contact',group:'contact',r:16,img:null,tooltip:'reach out',os:.00025,
+    panel:P("let's talk",sec('email','var(--contact)',mkL('mailto:valee.rishi@protonmail.com','valee.rishi@protonmail.com','var(--contact)'))+sec('phone','var(--contact)',mkL('tel:+919600016981','+91-9600016981','var(--contact)'))+sec('socials','var(--contact)',mkL('https://linkedin.com/in/rishi-valee','linkedin','var(--contact)')+mkL('https://github.com/r1sh1v21','github','var(--contact)'))+sec('resume','var(--contact)',mkL('rishi_resume.pdf','resume.pdf','var(--contact)')))},
+  {id:'hire',label:'hire me',group:'contact',r:11,img:null,tooltip:'do it',os:.0004,panel:P('seriously',tx("you've explored this far. you know i'm worth it.")+mkL('mailto:valee.rishi@protonmail.com','email me','var(--contact)'))},
+  {id:'currently',label:'Open to Work',group:'contact',r:12,img:null,tooltip:'chennai',os:.00035,panel:P('status',tx("looking for dev / ml roles in chennai."))},
+  {id:'whatsNext',label:"What's Next",group:'hobby',r:10,img:null,tooltip:'building',os:.00038,panel:P("next",tx("bigger systems. things that matter."))},
+];
+
+// ══════════════════════════════════════
+// LINKS
+// ══════════════════════════════════════
+const L=[
+  {s:'rishi',t:'systems',w:3},{s:'rishi',t:'ml',w:3},{s:'rishi',t:'webdev',w:2},{s:'rishi',t:'contact',w:2},
+  {s:'rishi',t:'python',w:3},{s:'rishi',t:'cpp',w:2},{s:'rishi',t:'rust',w:3},{s:'rishi',t:'java',w:1},{s:'rishi',t:'flutter',w:1},
+  {s:'systems',t:'rust',w:2},{s:'systems',t:'cpp',w:2},{s:'webdev',t:'js',w:2},
+  {s:'ml',t:'cv',w:2},{s:'ml',t:'nlp',w:2},{s:'ml',t:'dl',w:2},{s:'ml',t:'python',w:2},
+  {s:'dl',t:'nn',w:1},{s:'dl',t:'cnn',w:1},{s:'dl',t:'rnn',w:1},{s:'dl',t:'transformers',w:1},
+  {s:'nn',t:'backprop',w:1},{s:'nn',t:'gradDesc',w:1},{s:'nn',t:'lossFn',w:1},
+  {s:'ml',t:'featEng',w:1},{s:'ml',t:'ensemble',w:1},{s:'ml',t:'rl',w:1},
+  {s:'cnn',t:'cv',w:1},{s:'rnn',t:'nlp',w:1},
+  {s:'rishi',t:'dsa',w:2},{s:'rishi',t:'gate',w:1},
+  {s:'gate',t:'os',w:1},{s:'gate',t:'dbms',w:1},{s:'gate',t:'cn',w:1},
+  {s:'gate',t:'discreteMath',w:1},{s:'gate',t:'linAlg',w:1},{s:'gate',t:'probability',w:1},
+  {s:'linAlg',t:'ml',w:1},{s:'probability',t:'ml',w:1},
+  {s:'rishi',t:'git',w:1},{s:'rishi',t:'linux',w:1},{s:'rishi',t:'docker',w:1},
+  {s:'rishi',t:'vscode',w:1},{s:'python',t:'jupyter',w:1},{s:'webdev',t:'postman',w:1},
+  {s:'rishi',t:'sastra',w:2},{s:'sastra',t:'gate',w:1},
+  {s:'trading',t:'rust',w:2},{s:'trading',t:'systems',w:2},{s:'rishi',t:'trading',w:2},
+  {s:'ridesafe',t:'cv',w:2},{s:'ridesafe',t:'python',w:1},{s:'rishi',t:'ridesafe',w:1},
+  {s:'mental',t:'nlp',w:2},{s:'mental',t:'dl',w:1},{s:'mental',t:'rnn',w:1},
+  {s:'algobot',t:'python',w:1},{s:'nether',t:'webdev',w:1},{s:'nether',t:'js',w:1},
+  {s:'chat',t:'js',w:1},{s:'chat',t:'systems',w:1},{s:'chat',t:'cn',w:1},
+  {s:'emergency',t:'flutter',w:1},
+  {s:'diabetes',t:'ml',w:1},{s:'diabetes',t:'python',w:1},{s:'diabetes',t:'ensemble',w:1},
+  {s:'signlang',t:'cv',w:1},{s:'signlang',t:'cnn',w:1},{s:'signlang',t:'python',w:1},
+  {s:'spotify',t:'python',w:1},{s:'chatbots',t:'nlp',w:1},{s:'chatbots',t:'python',w:1},
+  {s:'parkinsons',t:'ml',w:2},{s:'parkinsons',t:'ensemble',w:1},{s:'parkinsons',t:'featEng',w:1},{s:'rishi',t:'parkinsons',w:2},
+  {s:'parkinsons',t:'diabetes',w:1},
+  {s:'rishi',t:'chess',w:1},{s:'rishi',t:'space',w:1},{s:'rishi',t:'reading',w:1},
+  {s:'rishi',t:'music',w:1},{s:'rishi',t:'boxing',w:1},{s:'rishi',t:'tradingH',w:1},
+  {s:'tradingH',t:'trading',w:1},{s:'tradingH',t:'algobot',w:1},
+  {s:'rishi',t:'whatsNext',w:1},{s:'contact',t:'hire',w:1},{s:'contact',t:'currently',w:1},
+].map(l=>({source:l.s,target:l.t,w:l.w}));
+
+// ══════════════════════════════════════
+// D3 SIMULATION
+// ══════════════════════════════════════
+const mob=W<768;
+const sim=d3.forceSimulation(N)
+  .force('link',d3.forceLink(L).id(d=>d.id).distance(d=>{
+    const s=d.source.id||d.source,t=d.target.id||d.target;
+    return(s==='rishi'||t==='rishi')?(mob?90:180):(mob?55:110);
+  }).strength(.2))
+  .force('charge',d3.forceManyBody().strength(mob?-120:-350))
+  .force('center',d3.forceCenter(W/2,H/2))
+  .force('collision',d3.forceCollide().radius(d=>d.r+(mob?3:8)))
+  .force('x',d3.forceX(W/2).strength(mob?.025:.008))
+  .force('y',d3.forceY(H/2).strength(mob?.025:.008));
+
+let settled=false;
+setTimeout(()=>{settled=true;sim.alphaTarget(.015)},4000);
+
+// orbital angles
+N.forEach(n=>{n._a=Math.random()*Math.PI*2});
+
+// ══════════════════════════════════════
+// CANVAS RENDERER
+// ══════════════════════════════════════
+const gc=document.getElementById('graphCanvas');
+const ctx=gc.getContext('2d');
+gc.width=W;gc.height=H;
+
+let transform=d3.zoomIdentity;
+const zoom=d3.zoom().scaleExtent([.15,3]).on('zoom',e=>{transform=e.transform});
+d3.select(gc).call(zoom);
+
+let hoveredId=null;
+let pulseR=34,pulseO=.15;
+
+function drawGraph(){
+  ctx.clearRect(0,0,W,H);
+  ctx.save();
+  ctx.translate(transform.x,transform.y);
+  ctx.scale(transform.k,transform.k);
+
+  if(settled){
+    N.forEach(n=>{
+      if(n.id==='rishi'||!n.os)return;
+      n._a+=n.os;
+      if(!n.fx){n.x+=Math.sin(n._a)*1.2;n.y+=Math.cos(n._a*.7)*.9}
+    });
+  }
+
+  const hNode=hoveredId?N.find(n=>n.id===hoveredId):null;
+  // connected node ids for hover highlight
+  const connectedIds=new Set();
+  if(hNode){
+    connectedIds.add(hNode.id);
+    L.forEach(l=>{
+      if(l.source.id===hNode.id)connectedIds.add(l.target.id);
+      if(l.target.id===hNode.id)connectedIds.add(l.source.id);
+    });
+  }
+
+  // ── LINKS ──
+  L.forEach(l=>{
+    if(!l.source.x)return;
+    ctx.beginPath();ctx.moveTo(l.source.x,l.source.y);ctx.lineTo(l.target.x,l.target.y);
+    if(hNode&&(l.source.id===hNode.id||l.target.id===hNode.id)){
+      const c=CM[hNode.group]||'#fff',rgb=hexRgb(c);
+      ctx.strokeStyle=`rgba(${rgb.r},${rgb.g},${rgb.b},.4)`;
+      ctx.lineWidth=(l.w||1)*1.5;
+    } else {
+      ctx.strokeStyle=hNode?'rgba(255,255,255,.02)':'rgba(255,255,255,.06)';
+      ctx.lineWidth=(l.w||1)*.5;
+    }
+    ctx.stroke();
+  });
+
+  // ── NODES ──
+  N.forEach(n=>{
+    if(!n.x)return;
+    const isHovered=hoveredId===n.id;
+    const isConnected=connectedIds.has(n.id);
+    const isCenter=n.id==='rishi';
+    const c=CM[n.group]||'#fff',rgb=hexRgb(c);
+
+    // dimming factor when something else is hovered
+    const dim=hNode&&!isConnected?.3:1;
+
+    if(isCenter){
+      // ── RISHI: bright star with lens flare ──
+      // large soft glow
+      const g1=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r*4);
+      g1.addColorStop(0,'rgba(200,220,255,.2)');
+      g1.addColorStop(.3,'rgba(150,180,255,.08)');
+      g1.addColorStop(1,'rgba(100,150,255,0)');
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r*4,0,Math.PI*2);ctx.fillStyle=g1;ctx.fill();
+
+      // horizontal lens flare
+      const flareW=n.r*6,flareH=2;
+      const g2=ctx.createLinearGradient(n.x-flareW,n.y,n.x+flareW,n.y);
+      g2.addColorStop(0,'rgba(180,200,255,0)');
+      g2.addColorStop(.4,'rgba(200,220,255,.1)');
+      g2.addColorStop(.5,'rgba(220,235,255,.15)');
+      g2.addColorStop(.6,'rgba(200,220,255,.1)');
+      g2.addColorStop(1,'rgba(180,200,255,0)');
+      ctx.fillStyle=g2;
+      ctx.fillRect(n.x-flareW,n.y-flareH,flareW*2,flareH*2);
+
+      // vertical mini flare
+      const g3=ctx.createLinearGradient(n.x,n.y-n.r*2.5,n.x,n.y+n.r*2.5);
+      g3.addColorStop(0,'rgba(180,200,255,0)');
+      g3.addColorStop(.45,'rgba(200,220,255,.06)');
+      g3.addColorStop(.5,'rgba(220,235,255,.1)');
+      g3.addColorStop(.55,'rgba(200,220,255,.06)');
+      g3.addColorStop(1,'rgba(180,200,255,0)');
+      ctx.fillStyle=g3;
+      ctx.fillRect(n.x-1.5,n.y-n.r*2.5,3,n.r*5);
+
+      // core circle
+      const g4=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r);
+      g4.addColorStop(0,'rgba(230,240,255,.95)');
+      g4.addColorStop(.5,'rgba(180,200,240,.3)');
+      g4.addColorStop(.8,'rgba(120,150,220,.1)');
+      g4.addColorStop(1,'rgba(80,120,200,.05)');
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);ctx.fillStyle=g4;ctx.fill();
+
+      // thin bright ring
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+      ctx.strokeStyle='rgba(200,215,255,.3)';ctx.lineWidth=1;ctx.stroke();
+
+      // R letter
+      ctx.fillStyle='rgba(255,255,255,.95)';
+      ctx.font='bold 18px Sora,sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('R',n.x,n.y);
+
+    } else {
+      // ── OTHER NODES: star-like at rest, colored on hover ──
+
+      // soft glow
+      const glowR=n.r*(isHovered?3.5:2);
+      const glowAlpha=isHovered?.3:(isConnected?.12:.06)*dim;
+      const gr=isHovered||isConnected?rgb:{r:180,g:200,b:230};
+      const g1=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,glowR);
+      g1.addColorStop(0,`rgba(${gr.r},${gr.g},${gr.b},${glowAlpha})`);
+      g1.addColorStop(1,`rgba(${gr.r},${gr.g},${gr.b},0)`);
+      ctx.beginPath();ctx.arc(n.x,n.y,glowR,0,Math.PI*2);ctx.fillStyle=g1;ctx.fill();
+
+      // backdrop
+      const bgAlpha=isHovered?.92:.82;
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(6,6,14,${bgAlpha*dim})`;ctx.fill();
+
+      // border ring
+      if(isHovered){
+        ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+        ctx.strokeStyle=`rgba(${rgb.r},${rgb.g},${rgb.b},.8)`;
+        ctx.lineWidth=2;ctx.stroke();
+      } else if(isConnected){
+        ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+        ctx.strokeStyle=`rgba(${rgb.r},${rgb.g},${rgb.b},.4)`;
+        ctx.lineWidth=1.5;ctx.stroke();
+      } else {
+        ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+        ctx.strokeStyle=`rgba(180,200,230,${.15*dim})`;
+        ctx.lineWidth=1;ctx.stroke();
+      }
+
+      // image or letter
+      const contentAlpha=isHovered?1:(isConnected?.8:.5)*dim;
+      if(n.img&&loadedImgs[n.img]){
+        const s=n.r*1.4;
+        ctx.save();
+        ctx.globalAlpha=contentAlpha;
+        ctx.beginPath();ctx.arc(n.x,n.y,n.r*.65,0,Math.PI*2);ctx.clip();
+        ctx.drawImage(loadedImgs[n.img],n.x-s/2,n.y-s/2,s,s);
+        ctx.restore();
+      } else {
+        const ch=n.label.charAt(0);
+        const lc=isHovered?`rgba(${rgb.r},${rgb.g},${rgb.b},${contentAlpha})`:`rgba(200,215,235,${contentAlpha})`;
+        ctx.fillStyle=lc;
+        ctx.font=`600 ${Math.max(n.r*.6,9)}px Sora,sans-serif`;
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(ch,n.x,n.y);
+      }
+    }
+
+    // ── LABEL ──
+    const labelAlpha=isHovered?.95:(isConnected?.6:.3)*(hNode&&!isConnected?.2:1);
+    ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=5;
+    const labelCol=isHovered?`rgba(${rgb.r},${rgb.g},${rgb.b},${labelAlpha})`:`rgba(200,210,230,${labelAlpha})`;
+    ctx.fillStyle=labelCol;
+    ctx.font=`${isHovered?'600':'400'} ${n.r>=18?11:8}px JetBrains Mono,monospace`;
+    ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillText(n.label,n.x,n.y+n.r+6);
+    ctx.shadowColor='transparent';ctx.shadowBlur=0;
+  });
+
+  // ── RISHI PULSE ──
+  const ri=N[0];
+  if(ri.x){
+    pulseR+=.1;pulseO-=.0015;
+    if(pulseR>65){pulseR=34;pulseO=.15}
+    ctx.beginPath();ctx.arc(ri.x,ri.y,pulseR,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(180,200,255,${Math.max(pulseO,0)})`;ctx.lineWidth=.8;ctx.stroke();
+  }
+
+  ctx.restore();
+  requestAnimationFrame(drawGraph);
+}
+drawGraph();
+
+// ══════════════════════════════════════
+// INTERACTION
+// ══════════════════════════════════════
+const tt=document.getElementById('tooltip'),ttT=tt.querySelector('.tt-title'),ttS=tt.querySelector('.tt-sub');
+
+function nodeAt(mx,my){
+  const x=(mx-transform.x)/transform.k,y=(my-transform.y)/transform.k;
+  for(let i=N.length-1;i>=0;i--){const n=N[i];if(!n.x)continue;const dx=x-n.x,dy=y-n.y;if(dx*dx+dy*dy<n.r*n.r)return n}
+  return null;
+}
+
+gc.addEventListener('mousemove',e=>{
+  const n=nodeAt(e.clientX,e.clientY);
+  if(n){
+    hoveredId=n.id;
+    gc.style.cursor='pointer';
+    ttT.textContent=n.label;ttS.textContent=n.tooltip||'';
+    tt.classList.add('show');tt.style.left=(e.clientX+14)+'px';tt.style.top=(e.clientY-8)+'px';
+  } else {
+    hoveredId=null;
+    gc.style.cursor='grab';tt.classList.remove('show');
+  }
+});
+gc.addEventListener('click',e=>{const n=nodeAt(e.clientX,e.clientY);if(n&&n.panel){sClick();openPanel(n)}else closePanel()});
+gc.addEventListener('touchstart',e=>{const t=e.touches[0];const n=nodeAt(t.clientX,t.clientY);if(n&&n.panel){sClick();openPanel(n)}},{passive:true});
+
+let dragN=null;
+gc.addEventListener('mousedown',e=>{const n=nodeAt(e.clientX,e.clientY);if(n){dragN=n;n.fx=n.x;n.fy=n.y;sim.alphaTarget(.1).restart()}});
+gc.addEventListener('mousemove',e=>{if(dragN){dragN.fx=(e.clientX-transform.x)/transform.k;dragN.fy=(e.clientY-transform.y)/transform.k}});
+gc.addEventListener('mouseup',()=>{if(dragN){dragN.fx=null;dragN.fy=null;dragN=null;sim.alphaTarget(settled?.015:0)}});
+
+function openPanel(d){document.getElementById('pTitle').textContent=d.panel.title;document.getElementById('pBody').innerHTML=d.panel.body;document.getElementById('panel').classList.add('open');sWhoosh()}
+function closePanel(){document.getElementById('panel').classList.remove('open')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel()});
+
+function zoomFit(){
+  let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
+  N.forEach(n=>{if(!n.x)return;x0=Math.min(x0,n.x-n.r);x1=Math.max(x1,n.x+n.r);y0=Math.min(y0,n.y-n.r);y1=Math.max(y1,n.y+n.r)});
+  const bw=x1-x0,bh=y1-y0,s=.85/Math.max(bw/W,bh/H);
+  d3.select(gc).transition().duration(750).call(zoom.transform,d3.zoomIdentity.translate(W/2-(x0+bw/2)*s,H/2-(y0+bh/2)*s).scale(s));
+}
+
+window.addEventListener('resize',()=>{
+  W=innerWidth;H=innerHeight;
+  gc.width=W;gc.height=H;
+  sim.force('center',d3.forceCenter(W/2,H/2)).alpha(.3).restart();
+});
+
+document.getElementById('intro').addEventListener('click',()=>{
+  document.getElementById('intro').classList.add('gone');
+  setTimeout(()=>document.getElementById('intro').remove(),1200);
+  try{ac=new AC()}catch(e){}
+});
+</script>
+</body>
+</html>
